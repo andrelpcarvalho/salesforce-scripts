@@ -33,32 +33,8 @@ else
 fi
 
 if [ ! -f .env ]; then
-  echo "==> Criando .env (preencha os valores antes de rodar)"
-  cat > .env <<'EOF'
-# ── Autenticação (Client Credentials Flow) — usado por query.py e update.py ──
-SF_CLIENT_ID=
-SF_CLIENT_SECRET=
-SF_LOGIN_URL=
-SF_API_VERSION=v61.0
-
-# ── Comum aos dois fluxos ──
-# Objeto alvo, ex: Account, Contact, Custom_Object__c
-SF_OBJECT=
-
-# ── Usado por query.py / run_query.py ──
-SF_FIELDS=
-SF_WHERE=
-SF_ORDER_BY=
-SF_LIMIT=
-SF_OUTPUT_PATH=./output/resultado.csv
-
-# ── Usado por update.py / run_update.py ──
-# insert | update | upsert | delete
-SF_OPERATION=update
-SF_EXTERNAL_ID_FIELD=
-CSV_DIR=./csv
-HEADER_MAPPING_PATH=header_mapping.json
-EOF
+  echo "==> Criando .env a partir de .env.example (preencha os valores antes de rodar)"
+  cp .env.example .env
   echo "    -> Edite o .env e preencha SF_CLIENT_ID, SF_CLIENT_SECRET e SF_LOGIN_URL"
   echo "    -> O resto (SF_OBJECT, SF_FIELDS, SF_OPERATION etc.) também pode ser"
   echo "       preenchido interativamente via 'python configure_query.py' ou"

@@ -33,20 +33,8 @@ fi
 
 # ---------- .env ----------
 if [ ! -f .env ]; then
-  echo "==> Criando .env (preencha os valores antes de rodar)"
-  cat > .env <<'EOF'
-# Caminho do CSV de origem (23M linhas)
-INPUT_FILE=seu_arquivo.csv
-
-# Pasta onde os arquivos divididos serão salvos
-OUTPUT_DIR=./csv
-
-# Prefixo dos arquivos gerados -> parte_1.csv, parte_2.csv, ...
-OUTPUT_PREFIX=parte
-
-# Linhas por arquivo
-MAX_ROWS=1000000
-EOF
+  echo "==> Criando .env a partir de .env.example (preencha os valores antes de rodar)"
+  cp .env.example .env
   echo "    -> Edite o .env e preencha INPUT_FILE"
 else
   echo "==> .env já existe, mantendo (não sobrescrito)"

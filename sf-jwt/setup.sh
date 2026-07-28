@@ -37,20 +37,8 @@ else
 fi
 
 if [ ! -f .env ]; then
-  echo "==> Criando .env (preencha os valores antes de rodar)"
-  cat > .env <<'EOF'
-# Caminho da chave privada gerada por gen_cert.py (nome real do arquivo, não mude)
-SF_PRIVATE_KEY_PATH=salesforce.key
-
-# Consumer Key da Connected App
-SF_CONSUMER_KEY=
-
-# Usuário de integração (precisa estar Pre-Authorized na Connected App)
-SF_USERNAME=
-
-# https://login.salesforce.com (produção/dev-edition) ou https://test.salesforce.com (sandbox)
-SF_LOGIN_URL=https://login.salesforce.com
-EOF
+  echo "==> Criando .env a partir de .env.example (preencha os valores antes de rodar)"
+  cp .env.example .env
   echo "    -> Edite o .env e preencha SF_CONSUMER_KEY e SF_USERNAME"
 else
   echo "==> .env já existe, mantendo (não sobrescrito)"
