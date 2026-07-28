@@ -5,8 +5,9 @@ Toolkit de scripts Python para operações em massa no Salesforce:
 - [`sf-jwt/`](./sf-jwt) — gera certificado/chave RSA e monta um JWT assinado para o **JWT Bearer Flow**.
 - [`bulk-api/`](./bulk-api) — consulta (`query.py`) e grava em massa (`update.py`) qualquer objeto do Salesforce via **Bulk API 2.0**, autenticado via **Client Credentials Flow**.
 - [`split-large-csv/`](./split-large-csv) — divide um CSV grande em N arquivos menores, prontos para alimentar o `bulk-api`.
+- [`sf-activate-bot-api/`](./sf-activate-bot-api) — localiza um Einstein Bot pelo `DeveloperName` e ativa a `BotVersion` mais recente via REST API, autenticado via **Client Credentials Flow**.
 
-Cada pasta tem sua própria venv, `requirements.txt` e `.env` — são independentes entre si (exceto `bulk-api`, que unifica query e update num único ambiente, já que compartilham autenticação e formato de configuração).
+Cada pasta tem sua própria venv, `requirements.txt` e `.env` (gerado a partir do `.env.example` de cada uma) — são independentes entre si (exceto `bulk-api`, que unifica query e update num único ambiente, já que compartilham autenticação e formato de configuração).
 
 ---
 
@@ -157,6 +158,56 @@ python split_csv.py
 ```
 
 Fluxo típico: aponte `OUTPUT_DIR` direto pra `bulk-api/csv/`, depois rode `python run_update.py` no `bulk-api`.
+
+---
+
+## sf-activate-bot-api
+
+Localiza um Einstein Bot pelo `DeveloperName` (API Name) e ativa a `BotVersion` mais recente via REST API — equivalente a um `curl -X PATCH .../sobjects/BotVersion/{id} -d '{"Status": "Active"}'`.
+
+### Estrutura
+
+```
+sf-activate-bot-api/
+├── auth.py           # autenticação (Client Credentials Flow)
+├── config.py          # wizard interativo: grava SF_BOT_API_NAME no .env
+├── activate_bot.py    # busca o Bot + BotVersion mais recente e ativa
+├── requirements.txt
+├── requirements-dev.txt
+├── setup.sh
+└── tests/
+
+# gerados localmente, não versionados:
+├── .venv/
+└── .env
+```
+
+### Pré-requisitos
+
+- Python 3.9+
+- Connected App no Salesforce com "Enable Client Credentials Flow" habilitado e "Run As" apontando pro usuário de integração, com permissão para gerenciar bots (`Manage Bots` ou equivalente) — sem isso o `PATCH` retorna 403.
+
+### Setup e uso
+
+```bash
+cd sf-activate-bot-api
+chmod +x setup.sh
+./setup.sh
+
+source .venv/bin/activate
+# edite o .env com SF_LOGIN_URL, SF_CLIENT_ID, SF_CLIENT_SECRET
+python config.py            # informa o DeveloperName do bot -> grava SF_BOT_API_NAME
+python activate_bot.py
+```
+
+Se o bot já estiver com `Status = Active`, o script não faz nada. `SF_API_VERSION` é opcional no `.env` (padrão `v61.0`).
+
+### Testes
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
 
 ---
 
