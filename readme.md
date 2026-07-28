@@ -1,4 +1,4 @@
-# salesforce-bulk-toolkit
+# salesforce-scripts
 
 Toolkit de scripts Python para operações em massa no Salesforce:
 
