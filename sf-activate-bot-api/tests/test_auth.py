@@ -1,18 +1,18 @@
 import pytest
 
-from auth import get_access_token, AuthError
+from auth import authenticate, AuthError
 
 
-def test_get_access_token_missing_credentials_raises(monkeypatch):
+def test_authenticate_missing_credentials_raises(monkeypatch):
     monkeypatch.delenv("SF_LOGIN_URL", raising=False)
     monkeypatch.delenv("SF_CLIENT_ID", raising=False)
     monkeypatch.delenv("SF_CLIENT_SECRET", raising=False)
 
     with pytest.raises(AuthError, match="Faltam variaveis"):
-        get_access_token()
+        authenticate()
 
 
-def test_get_access_token_success(monkeypatch, requests_mock):
+def test_authenticate_success(monkeypatch, requests_mock):
     monkeypatch.setenv("SF_LOGIN_URL", "https://suaorg.my.salesforce.com")
     monkeypatch.setenv("SF_CLIENT_ID", "client-id")
     monkeypatch.setenv("SF_CLIENT_SECRET", "client-secret")
@@ -23,12 +23,12 @@ def test_get_access_token_success(monkeypatch, requests_mock):
         status_code=200,
     )
 
-    result = get_access_token()
+    result = authenticate()
 
     assert result == {"access_token": "abc123", "instance_url": "https://suaorg.my.salesforce.com"}
 
 
-def test_get_access_token_sends_client_credentials_grant(monkeypatch, requests_mock):
+def test_authenticate_sends_client_credentials_grant(monkeypatch, requests_mock):
     monkeypatch.setenv("SF_LOGIN_URL", "https://suaorg.my.salesforce.com")
     monkeypatch.setenv("SF_CLIENT_ID", "client-id")
     monkeypatch.setenv("SF_CLIENT_SECRET", "client-secret")
@@ -39,7 +39,7 @@ def test_get_access_token_sends_client_credentials_grant(monkeypatch, requests_m
         status_code=200,
     )
 
-    get_access_token()
+    authenticate()
 
     sent_body = requests_mock.last_request.text
     assert "grant_type=client_credentials" in sent_body
@@ -47,7 +47,7 @@ def test_get_access_token_sends_client_credentials_grant(monkeypatch, requests_m
     assert "client_secret=client-secret" in sent_body
 
 
-def test_get_access_token_http_error_raises_autherror(monkeypatch, requests_mock):
+def test_authenticate_http_error_raises_autherror(monkeypatch, requests_mock):
     monkeypatch.setenv("SF_LOGIN_URL", "https://suaorg.my.salesforce.com")
     monkeypatch.setenv("SF_CLIENT_ID", "client-id")
     monkeypatch.setenv("SF_CLIENT_SECRET", "wrong-secret")
@@ -59,4 +59,4 @@ def test_get_access_token_http_error_raises_autherror(monkeypatch, requests_mock
     )
 
     with pytest.raises(AuthError, match="400"):
-        get_access_token()
+        authenticate()
