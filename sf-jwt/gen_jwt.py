@@ -1,8 +1,9 @@
 """
 gen_jwt.py
 
-Monta um JWT assinado com a chave privada (gen_cert.py) e troca pelo
-access token no endpoint OAuth do Salesforce (JWT Bearer Flow).
+Monta um JWT assinado com a chave privada (gen_cert.py). Por padrão,
+também troca esse JWT pelo access token no endpoint OAuth do
+Salesforce (JWT Bearer Flow) — mas isso é opcional.
 
 ── VARIAVEIS DE AMBIENTE ───────────────────────────────────────
 SF_PRIVATE_KEY_PATH  caminho da chave privada (gerada por gen_cert.py)
@@ -12,8 +13,21 @@ SF_LOGIN_URL          https://login.salesforce.com ou https://test.salesforce.co
 
 ── USO ─────────────────────────────────────────────────────────
 python gen_jwt.py
+    Monta o JWT E troca pelo access token (fluxo completo, uso normal).
+
+python gen_jwt.py --assertion-only
+    Só monta e imprime o JWT assinado, sem chamar o Salesforce.
+    Útil quando outro processo/ferramenta vai fazer a troca pelo
+    token (ex: testar a assertion manualmente via curl, ou repassar
+    pra um sistema terceiro que espera receber o JWT pronto).
+
+    Exemplo de troca manual via curl com o JWT gerado:
+        curl -X POST "$SF_LOGIN_URL/services/oauth2/token" \\
+          -d "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \\
+          -d "assertion=$JWT_GERADO"
 """
 
+import argparse
 import os
 import time
 
@@ -50,7 +64,19 @@ def exchange_token(login_url: str, assertion: str) -> dict:
     return response.json()
 
 
-def main():
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Monta (e opcionalmente troca) o JWT do JWT Bearer Flow.")
+    parser.add_argument(
+        "--assertion-only",
+        action="store_true",
+        help="So monta e imprime o JWT assinado, sem trocar pelo access token.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+
     private_key_path = os.getenv("SF_PRIVATE_KEY_PATH")
     consumer_key = os.getenv("SF_CONSUMER_KEY")
     username = os.getenv("SF_USERNAME")
@@ -60,6 +86,10 @@ def main():
         private_key = f.read()
 
     assertion = build_assertion(private_key, consumer_key, username, login_url)
+
+    if args.assertion_only:
+        print(assertion)
+        return
 
     try:
         token_data = exchange_token(login_url, assertion)

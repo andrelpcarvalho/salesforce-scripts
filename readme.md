@@ -63,6 +63,10 @@ python gen_cert.py
 # edite o .env com SF_CONSUMER_KEY e SF_USERNAME
 python gen_jwt.py
 # -> imprime access_token e instance_url, prontos para uso
+
+python gen_jwt.py --assertion-only
+# -> so monta e imprime o JWT assinado, sem chamar o Salesforce
+#    (util quando outro processo/ferramenta vai trocar pelo token)
 ```
 
 ---

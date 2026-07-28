@@ -3,7 +3,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from gen_jwt import build_assertion, exchange_token
+from gen_jwt import build_assertion, exchange_token, main
 
 
 @pytest.fixture
@@ -77,3 +77,54 @@ def test_exchange_token_failure_raises_runtime_error(requests_mock):
 
     with pytest.raises(RuntimeError, match="400"):
         exchange_token("https://login.salesforce.com", "fake-assertion")
+
+
+# ── main() ───────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def env_and_key(tmp_path, monkeypatch, rsa_private_key_pem):
+    key_path = tmp_path / "salesforce.key"
+    key_path.write_text(rsa_private_key_pem)
+
+    monkeypatch.setenv("SF_PRIVATE_KEY_PATH", str(key_path))
+    monkeypatch.setenv("SF_CONSUMER_KEY", "consumer123")
+    monkeypatch.setenv("SF_USERNAME", "user@org.com")
+    monkeypatch.setenv("SF_LOGIN_URL", "https://login.salesforce.com")
+
+
+def test_main_assertion_only_nao_chama_o_salesforce(env_and_key, requests_mock, capsys):
+    main(["--assertion-only"])
+
+    assert requests_mock.call_count == 0
+
+    saida = capsys.readouterr().out.strip()
+    decoded = pyjwt.decode(saida, options={"verify_signature": False})
+    assert decoded["iss"] == "consumer123"
+    assert decoded["sub"] == "user@org.com"
+
+
+def test_main_fluxo_completo_troca_pelo_token(env_and_key, requests_mock, capsys):
+    requests_mock.post(
+        "https://login.salesforce.com/services/oauth2/token",
+        json={"access_token": "abc123", "instance_url": "https://myorg.my.salesforce.com"},
+        status_code=200,
+    )
+
+    main([])
+
+    assert requests_mock.call_count == 1
+    saida = capsys.readouterr().out
+    assert "access_token: abc123" in saida
+    assert "instance_url: https://myorg.my.salesforce.com" in saida
+
+
+def test_main_fluxo_completo_erro_na_troca_sai_com_erro(env_and_key, requests_mock, capsys):
+    requests_mock.post(
+        "https://login.salesforce.com/services/oauth2/token",
+        json={"error": "invalid_grant"},
+        status_code=400,
+    )
+
+    with pytest.raises(SystemExit):
+        main([])
