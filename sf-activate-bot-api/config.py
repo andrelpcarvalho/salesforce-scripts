@@ -23,7 +23,7 @@ def read_env(path: str) -> dict:
                 if not linha or linha.startswith("#") or "=" not in linha:
                     continue
                 chave, _, valor = linha.partition("=")
-                valores[chave.strip()] = valor.strip()
+                valores[chave.strip()] = _unquote(valor.strip())
     except FileNotFoundError:
         pass
     return valores
@@ -32,7 +32,17 @@ def read_env(path: str) -> dict:
 def write_env(path: str, valores: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         for chave, valor in valores.items():
-            f.write(f'{chave}="{valor}"\n')
+            f.write(f'{chave}="{_escape(valor)}"\n')
+
+
+def _escape(valor: str) -> str:
+    return valor.replace('"', '\\"')
+
+
+def _unquote(valor: str) -> str:
+    if len(valor) >= 2 and valor[0] == '"' and valor[-1] == '"':
+        return valor[1:-1].replace('\\"', '"')
+    return valor
 
 
 def main() -> None:
