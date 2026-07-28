@@ -27,7 +27,7 @@ import sys
 import requests
 from dotenv import load_dotenv
 
-from auth import get_access_token, AuthError
+from auth import authenticate, AuthError
 
 load_dotenv()
 
@@ -102,7 +102,7 @@ def main() -> None:
     api_version = os.getenv("SF_API_VERSION", "v61.0")
 
     try:
-        auth = get_access_token()
+        auth = authenticate()
         instance_url = auth["instance_url"]
         access_token = auth["access_token"]
 

@@ -22,7 +22,7 @@ class AuthError(Exception):
     """Erro ao autenticar na org."""
 
 
-def get_access_token() -> dict:
+def authenticate() -> dict:
     """
     Faz o Client Credentials Flow e retorna:
         {"access_token": ..., "instance_url": ...}
