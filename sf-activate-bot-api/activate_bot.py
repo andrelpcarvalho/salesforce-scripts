@@ -52,7 +52,7 @@ def _find_bot_id(instance_url: str, access_token: str, bot_api_name: str) -> str
     records = _query(
         instance_url,
         access_token,
-        f"SELECT Id, DeveloperName FROM Bot WHERE DeveloperName = '{bot_api_name}'",
+        f"SELECT Id, DeveloperName FROM BotDefinition WHERE DeveloperName = '{bot_api_name}'",
     )
     if not records:
         raise BotActivationError(
