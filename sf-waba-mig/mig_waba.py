@@ -41,11 +41,16 @@ BLOCK_PATTERN = re.compile(
     re.DOTALL,
 )
 
-TEMPLATE_NAME_PATTERN = re.compile(r"<templateName>(.*?)</templateName>", re.DOTALL)
+TEMPLATE_NAME_PATTERN = re.compile(r"(<templateName>)(.*?)(</templateName>)", re.DOTALL)
 LANGUAGE_PATTERN = re.compile(r"<language>(.*?)</language>", re.DOTALL)
 VERSION_ID_PATTERN = re.compile(
     r"(<templateVersionIdentifier>)(.*?)(</templateVersionIdentifier>)", re.DOTALL
 )
+
+# Sufixo adicionado ao NOME DO ARQUIVO de saída, antes de ".conversationMessageDefinition-meta.xml"
+# Ex.: teste.conversationMessageDefinition-meta.xml -> teste_v2.conversationMessageDefinition-meta.xml
+SUFIXO_ARQUIVO = "_v2"
+EXTENSAO_META = ".conversationMessageDefinition-meta.xml"
 
 
 def carregar_json(caminho_json: Path) -> list:
@@ -85,7 +90,7 @@ def processar_bloco(bloco: str, templates: list):
     if not nome_match:
         return bloco, "sem_templateName"
 
-    nome = nome_match.group(1).strip()
+    nome = nome_match.group(2).strip()
 
     idioma_match = LANGUAGE_PATTERN.search(bloco)
     idioma = idioma_match.group(1).strip() if idioma_match else None
@@ -98,13 +103,28 @@ def processar_bloco(bloco: str, templates: list):
     return novo_bloco, None
 
 
+def montar_nome_saida(nome_original: str) -> str:
+    """Insere o SUFIXO_ARQUIVO antes da extensão do arquivo de output."""
+    if nome_original.endswith(EXTENSAO_META):
+        base = nome_original[: -len(EXTENSAO_META)]
+        return f"{base}{SUFIXO_ARQUIVO}{EXTENSAO_META}"
+
+    # fallback: arquivo não segue o padrão esperado -> insere sufixo antes do .xml
+    if nome_original.endswith(".xml"):
+        return f"{nome_original[:-4]}{SUFIXO_ARQUIVO}.xml"
+
+    return f"{nome_original}{SUFIXO_ARQUIVO}"
+
+
 def processar_arquivo(xml_path: Path, templates: list, output_dir: Path):
     conteudo = xml_path.read_text(encoding="utf-8")
+
+    nome_saida = montar_nome_saida(xml_path.name)
 
     blocos = BLOCK_PATTERN.findall(conteudo)
     if not blocos:
         print(f"  [AVISO] Nenhum bloco <externalTemplates> encontrado em {xml_path.name} — copiando sem alterações.")
-        (output_dir / xml_path.name).write_text(conteudo, encoding="utf-8")
+        (output_dir / nome_saida).write_text(conteudo, encoding="utf-8")
         return
 
     novo_conteudo = conteudo
@@ -117,15 +137,15 @@ def processar_arquivo(xml_path: Path, templates: list, output_dir: Path):
             continue
         novo_conteudo = novo_conteudo.replace(bloco, novo_bloco, 1)
 
-    destino = output_dir / xml_path.name
+    destino = output_dir / nome_saida
     destino.write_text(novo_conteudo, encoding="utf-8")
 
     if problemas:
-        print(f"  [PARCIAL] {xml_path.name}: {len(blocos) - len(problemas)}/{len(blocos)} bloco(s) atualizados.")
+        print(f"  [PARCIAL] {xml_path.name} -> {nome_saida}: {len(blocos) - len(problemas)}/{len(blocos)} bloco(s) atualizados.")
         for p in problemas:
             print(f"      - {p}")
     else:
-        print(f"  [OK] {xml_path.name}: {len(blocos)} bloco(s) atualizados.")
+        print(f"  [OK] {xml_path.name} -> {nome_saida}: {len(blocos)} bloco(s) atualizados.")
 
 
 def main():
