@@ -76,17 +76,17 @@ def _find_latest_bot_version(instance_url: str, access_token: str, api_version: 
 
 
 def _activate_bot_version(instance_url: str, access_token: str, api_version: str, bot_version_id: str) -> None:
-    resp = requests.patch(
-        f"{instance_url}/services/data/{api_version}/sobjects/BotVersion/{bot_version_id}",
+    resp = requests.post(
+        f"{instance_url}/services/data/{api_version}/connect/bot-versions/{bot_version_id}/activation",
         headers={
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         },
-        json={"Status": "Active"},
+        json={"status": "Active"},
         timeout=30,
     )
-    # PATCH bem sucedido no REST API padrao retorna 204 sem corpo
-    if resp.status_code != 204:
+    # POST bem sucedido no REST API padrao retorna 201 com corpo
+    if resp.status_code != 201:
         raise BotActivationError(f"Falha ao ativar ({resp.status_code}): {resp.text}")
 
 
