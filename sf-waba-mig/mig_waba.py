@@ -12,10 +12,17 @@ o script:
   4. Mantém TODO o resto do arquivo (formatação, outras tags, etc.) exatamente igual
 
 Uso:
-    python gerar_messaging_component_v2.py \
+    python mig_waba.py \
         --input ./messaging_components_v1 \
         --json ./templates.json \
         --output ./messaging_components_v2
+
+Também é possível configurar via .env (veja .env.example), em vez de passar
+os três argumentos toda vez. Argumentos de linha de comando, quando informados,
+sempre têm prioridade sobre o .env:
+    INPUT_DIR=./messaging_components_v1
+    JSON_PATH=./templates.json
+    OUTPUT_DIR=./messaging_components_v2
 
 Formato esperado do JSON (lista de objetos, um por template):
 [
@@ -31,9 +38,14 @@ Formato esperado do JSON (lista de objetos, um por template):
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Captura cada bloco <externalTemplates>...</externalTemplates> inteiro
 BLOCK_PATTERN = re.compile(
@@ -148,16 +160,46 @@ def processar_arquivo(xml_path: Path, templates: list, output_dir: Path):
         print(f"  [OK] {xml_path.name} -> {nome_saida}: {len(blocos)} bloco(s) atualizados.")
 
 
+def resolver_config(args_input, args_json, args_output):
+    """Resolve input/json/output combinando argumentos de CLI com o .env.
+
+    Argumentos de linha de comando têm prioridade; quando ausentes, cai para
+    as variáveis de ambiente INPUT_DIR / JSON_PATH / OUTPUT_DIR (carregadas
+    do .env via load_dotenv() no import do módulo).
+    """
+    input_valor = args_input or os.environ.get("INPUT_DIR")
+    json_valor = args_json or os.environ.get("JSON_PATH")
+    output_valor = args_output or os.environ.get("OUTPUT_DIR")
+
+    faltando = [
+        nome
+        for nome, valor in (("--input/INPUT_DIR", input_valor),
+                             ("--json/JSON_PATH", json_valor),
+                             ("--output/OUTPUT_DIR", output_valor))
+        if not valor
+    ]
+    if faltando:
+        sys.exit(
+            "[ERRO] Configuração incompleta, faltando: "
+            + ", ".join(faltando)
+            + ". Informe via argumento de linha de comando ou no .env."
+        )
+
+    return input_valor, json_valor, output_valor
+
+
 def main():
     parser = argparse.ArgumentParser(description="Gera Messaging Components v2 a partir dos XMLs v1.")
-    parser.add_argument("--input", required=True, help="Pasta com os XMLs v1")
-    parser.add_argument("--json", required=True, help="Arquivo JSON com a lista de templates (name, language, id)")
-    parser.add_argument("--output", required=True, help="Pasta de saída para os XMLs v2")
+    parser.add_argument("--input", default=None, help="Pasta com os XMLs v1 (ou INPUT_DIR no .env)")
+    parser.add_argument("--json", default=None, help="JSON com a lista de templates (ou JSON_PATH no .env)")
+    parser.add_argument("--output", default=None, help="Pasta de saída para os XMLs v2 (ou OUTPUT_DIR no .env)")
     args = parser.parse_args()
 
-    input_dir = Path(args.input)
-    output_dir = Path(args.output)
-    json_path = Path(args.json)
+    input_valor, json_valor, output_valor = resolver_config(args.input, args.json, args.output)
+
+    input_dir = Path(input_valor)
+    output_dir = Path(output_valor)
+    json_path = Path(json_valor)
 
     if not input_dir.is_dir():
         sys.exit(f"[ERRO] Pasta de entrada não encontrada: {input_dir}")

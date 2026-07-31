@@ -6,6 +6,7 @@ Toolkit de scripts Python para operações em massa no Salesforce:
 - [`bulk-api/`](./bulk-api) — consulta (`query.py`) e grava em massa (`update.py`) qualquer objeto do Salesforce via **Bulk API 2.0**, autenticado via **Client Credentials Flow**.
 - [`split-large-csv/`](./split-large-csv) — divide um CSV grande em N arquivos menores, prontos para alimentar o `bulk-api`.
 - [`sf-activate-bot-api/`](./sf-activate-bot-api) — localiza um Einstein Bot pelo `DeveloperName` e ativa a `BotVersion` mais recente via REST API, autenticado via **Client Credentials Flow**.
+- [`sf-waba-mig/`](./sf-waba-mig) — gera Messaging Components v2 a partir dos XMLs v1, atualizando o `templateVersionIdentifier` de cada `<externalTemplates>` com base num JSON de templates do WhatsApp (WABA).
 
 Cada pasta tem sua própria venv, `requirements.txt` e `.env` (gerado a partir do `.env.example` de cada uma) — são independentes entre si (exceto `bulk-api`, que unifica query e update num único ambiente, já que compartilham autenticação e formato de configuração).
 
@@ -205,6 +206,75 @@ python activate_bot.py
 ```
 
 Se o bot já estiver com `Status = Active`, o script não faz nada. `SF_API_VERSION` é opcional no `.env` (padrão `v61.0`).
+
+### Testes
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
+---
+
+## sf-waba-mig
+
+Gera os Messaging Components **v2** a partir dos XMLs **v1**: para cada bloco `<externalTemplates>` de um `.conversationMessageDefinition-meta.xml`, busca no JSON de templates (exportado do WhatsApp Business Account) o item cujo `name` bate com o `<templateName>` do XML — desempatando por `<language>` quando há mais de um candidato com o mesmo nome — e substitui apenas o conteúdo de `<templateVersionIdentifier>`, mantendo todo o resto do arquivo (formatação, outras tags) exatamente igual.
+
+Não acessa a API do Salesforce nem usa credenciais — é um processamento local de arquivos. O `.env` aqui é só conveniência: guarda `INPUT_DIR`/`JSON_PATH`/`OUTPUT_DIR` pra você não precisar passar os três argumentos toda vez. Argumentos de linha de comando, quando informados, sempre têm prioridade sobre o `.env`.
+
+### Estrutura
+
+```
+sf-waba-mig/
+├── .env.example
+├── .gitignore
+├── mig_waba.py           # lê os XMLs v1 + JSON de templates, gera os XMLs v2
+├── requirements.txt       # python-dotenv
+├── requirements-dev.txt   # + pytest, para rodar os testes
+├── setup.sh               # cria venv, instala requirements.txt e .env
+└── tests/
+    ├── conftest.py
+    └── test_mig_waba.py
+
+# gerados localmente, não versionados:
+├── venv/
+├── .env
+└── (pasta de output apontada em --output/OUTPUT_DIR)
+```
+
+### Pré-requisitos
+
+- Python 3.9+
+- Um JSON com a lista de templates do WABA no formato:
+  ```json
+  [
+      {
+          "name": "validacao_de_instalacao_instalador__v2",
+          "language": "pt_BR",
+          "status": "APPROVED",
+          "id": "860968043551396"
+      }
+  ]
+  ```
+
+### Setup e uso
+
+```bash
+cd sf-waba-mig
+chmod +x setup.sh
+./setup.sh
+
+source venv/bin/activate
+
+# opção 1: argumentos de linha de comando
+python mig_waba.py \
+    --input ./messaging_components_v1 \
+    --json ./templates.json \
+    --output ./messaging_components_v2
+
+# opção 2: preencha INPUT_DIR/JSON_PATH/OUTPUT_DIR no .env e rode sem argumentos
+python mig_waba.py
+```
 
 ### Testes
 
